@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Flappy Panda</title>
+    <style>
+        canvas {
+            border: 2px solid black;
+            display: block;
+            margin: 0 auto;
+        }
+        body {
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #restartButton {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, 60px);
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: none;
+        }
+        #restartButton:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <button id="restartButton">Restart Game</button>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Game variables
+        let panda = {
+            x: 50,
+            y: 300,
+            velocity: 0,
+            gravity: 0.5,
+            jump: -8,
+            size: 30
+        };
+
+        let pipes = [];
+        let score = 0;
+        let gameOver = false;
+        const pipeGap = 150;
+        const pipeWidth = 50;
+        const bambooColor = '#90B652';
+        const bambooJointColor = '#748F3E';
+        let blinkTimer = 0;
+        let isBlinking = false;
+        let cheekOpacity = 0.6;
+
+        // Event listeners
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space') {
+                if (gameOver) {
+                    resetGame();
+                } else {
+                    panda.velocity = panda.jump;
+                }
+            }
+        });
+
+        document.addEventListener('click', function() {
+            if (gameOver) {
+                resetGame();
+            } else {
+                panda.velocity = panda.jump;
+            }
+        });
+
+        // Game functions
+        function createPipe() {
+            let gap = Math.random() * (canvas.height - pipeGap - 100) + 50;
+            pipes.push({
+                x: canvas.width,
+                topHeight: gap,
+                passed: false
+            });
+        }
+
+        function resetGame() {
+            panda = {
+                x: 50,
+                y: 300,
+                velocity: 0,
+                gravity: 0.5,
+                jump: -8,
+                size: 30
+            };
+            pipes = [];
+            score = 0;
+            gameOver = false;
+            document.getElementById('restartButton').style.display = 'none';
+        }
+
+        function drawPanda() {
+            ctx.save();
+            ctx.translate(panda.x, panda.y);
+            ctx.rotate(Math.min(Math.max(panda.velocity * 0.04, -0.5), 0.5));
+            
+            // Fluffy white body with slight shadow
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(0, 0, panda.size, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Add subtle fluff details
+            ctx.strokeStyle = '#f0f0f0';
+            ctx.lineWidth = 2;
+            for(let i = 0; i < 8; i++) {
+                ctx.beginPath();
+                ctx.arc(0, 0, panda.size - 2, i * Math.PI/4, (i + 0.5) * Math.PI/4);
+                ctx.stroke();
+            }
+            
+            // Ears (more rounded and fluffy)
+            ctx.fillStyle = '#333';
+            drawFluffyEar(-15, -20, 14, -Math.PI/6);
+            drawFluffyEar(15, -20, 14, Math.PI/6);
+            
+            // Rosy cheeks
+            ctx.fillStyle = `rgba(255, 183, 197, ${cheekOpacity})`;
+            ctx.beginPath();
+            ctx.arc(-18, 2, 7, 0, Math.PI * 2);
+            ctx.arc(18, 2, 7, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Eye patches (softer and more oval)
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.ellipse(-12, -4, 13, 11, Math.PI/12, 0, Math.PI * 2);
+            ctx.ellipse(12, -4, 13, 11, -Math.PI/12, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Eyes (with blinking animation)
+            if (!isBlinking) {
+                // White eyes with shine
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(-12, -4, 6.5, 0, Math.PI * 2);
+                ctx.arc(12, -4, 6.5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Larger pupils with shine
+                ctx.fillStyle = '#333';
+                ctx.beginPath();
+                ctx.arc(-12, -4, 3.5, 0, Math.PI * 2);
+                ctx.arc(12, -4, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Eye shine (two spots for extra cuteness)
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(-13, -5, 1.5, 0, Math.PI * 2);
+                ctx.arc(-11, -3, 1, 0, Math.PI * 2);
+                ctx.arc(11, -5, 1.5, 0, Math.PI * 2);
+                ctx.arc(13, -3, 1, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                // Closed eyes (cute curved lines)
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(-12, -4, 6, Math.PI/6, Math.PI - Math.PI/6);
+                ctx.arc(12, -4, 6, Math.PI/6, Math.PI - Math.PI/6);
+                ctx.stroke();
+            }
+            
+            // Cute pink heart-shaped nose
+            ctx.fillStyle = '#ffb7c5';
+            ctx.beginPath();
+            ctx.moveTo(0, 2);
+            ctx.quadraticCurveTo(-5, -2, 0, -4);
+            ctx.quadraticCurveTo(5, -2, 0, 2);
+            ctx.fill();
+            
+            // Kawaii mouth
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 2, 8, 0.1, Math.PI - 0.1);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+
+        function drawPipes() {
+            pipes.forEach(pipe => {
+                // Draw main bamboo stalk
+                ctx.fillStyle = bambooColor;
+                ctx.fillRect(pipe.x, 0, pipeWidth, pipe.topHeight);
+                ctx.fillRect(pipe.x, pipe.topHeight + pipeGap, pipeWidth, 
+                    canvas.height - pipe.topHeight - pipeGap);
+                
+                // Draw bamboo joints
+                const jointHeight = 20;
+                for(let y = jointHeight; y < pipe.topHeight; y += jointHeight) {
+                    ctx.fillStyle = bambooJointColor;
+                    ctx.fillRect(pipe.x - 2, y, pipeWidth + 4, 4);
+                }
+                for(let y = pipe.topHeight + pipeGap; y < canvas.height; y += jointHeight) {
+                    ctx.fillStyle = bambooJointColor;
+                    ctx.fillRect(pipe.x - 2, y, pipeWidth + 4, 4);
+                }
+                
+                // Add bamboo leaves
+                drawBambooLeaves(pipe.x, pipe.topHeight);
+                drawBambooLeaves(pipe.x, pipe.topHeight + pipeGap);
+            });
+        }
+
+        function drawBambooLeaves(x, y) {
+            ctx.save();
+            ctx.fillStyle = '#A8CD65';
+            ctx.translate(x, y);
+            
+            // Draw several leaves
+            for(let i = 0; i < 3; i++) {
+                ctx.beginPath();
+                ctx.moveTo(pipeWidth, 0);
+                ctx.quadraticCurveTo(pipeWidth + 20, -10 - i * 10, pipeWidth + 40, -5 - i * 5);
+                ctx.quadraticCurveTo(pipeWidth + 20, 0 - i * 10, pipeWidth, 0);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        function drawFluffyEar(x, y, size, rotation) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(rotation);
+            
+            // Main ear shape
+            ctx.beginPath();
+            ctx.arc(0, 0, size, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Fluffy details
+            ctx.strokeStyle = '#444';
+            ctx.lineWidth = 1;
+            for(let i = 0; i < 6; i++) {
+                ctx.beginPath();
+                ctx.arc(0, 0, size - 2, i * Math.PI/3, (i + 0.5) * Math.PI/3);
+                ctx.stroke();
+            }
+            
+            ctx.restore();
+        }
+
+        function checkCollision(pipe) {
+            if (panda.y - panda.size < 0 || panda.y + panda.size > canvas.height) {
+                return true;
+            }
+
+            if (panda.x + panda.size > pipe.x && panda.x - panda.size < pipe.x + pipeWidth) {
+                if (panda.y - panda.size < pipe.topHeight || 
+                    panda.y + panda.size > pipe.topHeight + pipeGap) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function update() {
+            if (gameOver) {
+                ctx.fillStyle = 'black';
+                ctx.font = '48px Arial';
+                ctx.fillText('Game Over!', 100, 250);
+                ctx.font = '24px Arial';
+                ctx.fillText('Score: ' + score, 160, 300);
+                document.getElementById('restartButton').style.display = 'block';
+                return;
+            }
+            document.getElementById('restartButton').style.display = 'none';
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Update panda
+            panda.velocity += panda.gravity;
+            panda.y += panda.velocity;
+
+            // Create new pipes
+            if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width - 200) {
+                createPipe();
+            }
+
+            // Update pipes
+            pipes.forEach((pipe, index) => {
+                pipe.x -= 2;
+
+                if (pipe.x + pipeWidth < panda.x && !pipe.passed) {
+                    score++;
+                    pipe.passed = true;
+                }
+
+                if (checkCollision(pipe)) {
+                    gameOver = true;
+                }
+
+                if (pipe.x + pipeWidth < 0) {
+                    pipes.splice(index, 1);
+                }
+            });
+
+            // Draw everything
+            drawPipes();
+            drawPanda();
+
+            // Draw score
+            ctx.fillStyle = 'black';
+            ctx.font = '24px Arial';
+            ctx.fillText('Score: ' + score, 10, 30);
+
+            // Add this to your update function before drawing the panda
+            blinkTimer++;
+            if (blinkTimer > 100) { // Blink every ~3 seconds
+                isBlinking = true;
+                if (blinkTimer > 110) { // Blink duration
+                    blinkTimer = 0;
+                    isBlinking = false;
+                }
+            }
+
+            // Add this to make the cheeks pulse slightly
+            cheekOpacity = 0.6 + Math.sin(Date.now() / 500) * 0.1;
+
+            requestAnimationFrame(update);
+        }
+
+        // Start the game
+        update();
+
+        document.getElementById('restartButton').addEventListener('click', function() {
+            resetGame();
+            update();
+        });
+    </script>
+</body>
+</html> 
